@@ -9,8 +9,8 @@ Cada linha representa uma ideia aplicada ou pesquisada. Atualizar após cada med
 | 02 | Indexação PostgreSQL | Criar índices B-tree nas chaves estrangeiras (cliente_id, pedido_id, produto_id), composto em pedidos(status, criado_em DESC, id DESC), expressional em clientes(lower(email)) e trigram em produtos(nome) deve reduzir a latência das rotas de pedidos e clientes, porque substitui varreduras sequenciais completas por buscas diretas por índice. | [PostgreSQL CREATE INDEX](https://www.postgresql.org/docs/current/sql-createindex.html) <br> <br> [indexes-on-expressions-in-postgresql-andreigridnev](https://andreigridnev.com/blog/2016-04-01-indexes-on-expressions-in-postgresql/) <br> <br>[indexes-expressional-Postgresql](https://www.postgresql.org/docs/16/indexes-expressional.html) <br> <br> [indexes-multicolumn-postgresql](https://www.postgresql.org/docs/16/indexes-multicolumn.html)<br> <br> [Index Types-postgresql](https://www.postgresql.org/docs/16/indexes-types.html#INDEXES-TYPES-BTREE) <br> <br> [pgtrgm- support for similarity of text using trigram matching - postgresql](https://www.postgresql.org/docs/16/pgtrgm.html)| ✅ Concluída | 698.4 ms | 96.5 ms | -86,2% Latência mediana ,  +436,9% req/s, -52,95% latencia para 95% das solicitações, -40,2% para 99% das solicitações, +356.08% de requisições atendidas, memória do banco se manteve estável com um pequeno aumento, CPU do Banco teve um aumento de 16% ( baixo aumento considerando o aumento da carga) | `resultados/20261114-20*-02-indices/` |  A implementação da nova estratégia de indexação no banco de dados transformou radicalmente a performance da aplicação, eliminando varreduras sequenciais e gerando um salto extraordinário de eficiência com custo operacional mínimo. Com a adoção dos índices B-Tree, compostos, expressionais e trigram, a API registrou um aumento superior a 5 vezes no volume de requisições por segundo (+436,9%), uma queda drástica de 86,2% na latência mediana e a resolução do seu gargalo mais crítico na rota /clientes/:id/pedidos, cujo tempo de resposta despencou de cerca de 15 segundos para apenas 184 milissegundos, tudo isso mantendo o consumo de memória estável e o aumento de CPU rigorosamente controlado (+16%) |
 
 <br>
-> **Legenda de status:**
-> - ✅ Concluída — medida e commitada
-> - 🔲 Pendente — ainda não aplicada
-> - 🔍 Pesquisada, teste futuro — detalhes em `proximos-testes.md`
-> - ❌ Descartada — não aplicada (motivo na coluna Conclusão)
+ **Legenda de status:** <br>
+ - ✅ Concluída — medida e commitada <br>
+ - 🔲 Pendente — ainda não aplicada <br>
+ - 🔍 Pesquisada, teste futuro — detalhes em `proximos-testes.md` <br>
+ - ❌ Descartada — não aplicada (motivo na coluna Conclusão)
