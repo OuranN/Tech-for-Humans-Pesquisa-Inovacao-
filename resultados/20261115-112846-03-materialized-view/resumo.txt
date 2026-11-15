@@ -1,0 +1,17 @@
+Medição: 03-materialized-view
+Carga: 20 usuários virtuais por 60s
+
+Requisições:        2541
+Requisições/s:      43.78
+Tempo de resposta:  mediana 178.1 ms | p95 1824.9 ms | p99 3006.5 ms
+Erros:              0.00%
+
+Por rota:
+rota                  req       mediana       p95           p99           erros   
+cliente               653       91.4 ms       262.5 ms      400.9 ms      0.0%    
+cliente-por-email     370       91.0 ms       291.9 ms      404.9 ms      0.0%    
+pedidos-do-cliente    526       799.6 ms      1791.7 ms     2211.4 ms     0.0%    
+pedidos-por-status    360       348.7 ms      1990.8 ms     2913.8 ms     0.0%    
+busca-produtos        387       98.6 ms       395.3 ms      599.0 ms      0.0%    
+vendas-por-dia        200       1625.4 ms     3622.5 ms     4717.4 ms     0.0%    
+top-produtos          45        110.9 ms      404.4 ms      549.2 ms      0.0%    
