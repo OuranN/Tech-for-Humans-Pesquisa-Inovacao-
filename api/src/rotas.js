@@ -61,41 +61,84 @@ rotas.get('/clientes/:id', assincrono(async (req, res) => {
 
 rotas.get('/clientes/:id/pedidos', assincrono(async (req, res) => {
   const id = inteiroPositivo(req.params.id);
-  if (id === null) return res.status(400).json({ erro: 'id invalido' });
+  
 
-  const clientes = await consultar('SELECT * FROM clientes WHERE id = $1', [id]);
-  if (clientes.length === 0) return res.status(404).json({ erro: 'cliente nao encontrado' });
+  if (id === null) {
+    return res.status(400).json({ erro: 'id invalido' });
+  }
 
-  const pedidos = await consultar(
-    'SELECT * FROM pedidos WHERE cliente_id = $1 ORDER BY criado_em DESC, id DESC',
+
+  const clientes = await consultar(
+    'SELECT id FROM clientes WHERE id = $1',
     [id],
   );
 
-  const resposta = [];
-  for (const pedido of pedidos) {
-    const itens = await consultar('SELECT * FROM itens_pedido WHERE pedido_id = $1 ORDER BY id', [pedido.id]);
 
-    const itensFormatados = [];
-    let total = 0;
-    for (const item of itens) {
-      const [produto] = await consultar('SELECT * FROM produtos WHERE id = $1', [item.produto_id]);
-      itensFormatados.push({
-        produto_id: item.produto_id,
-        produto_nome: produto.nome,
-        quantidade: item.quantidade,
-        preco_unitario_centavos: item.preco_unitario_centavos,
-      });
-      total += item.quantidade * item.preco_unitario_centavos;
-    }
-
-    resposta.push({
-      id: pedido.id,
-      status: pedido.status,
-      criado_em: pedido.criado_em,
-      total_centavos: total,
-      itens: itensFormatados,
+  if (clientes.length === 0) {
+    return res.status(404).json({
+      erro: 'cliente nao encontrado',
     });
   }
+
+
+  // Buscar pedidos, itens e produtos em uma única consulta
+  const linhas = await consultar(
+    `
+      SELECT
+        p.id AS pedido_id,
+        p.status,
+        p.criado_em,
+        ip.id AS item_id,
+        ip.produto_id,
+        pr.nome AS produto_nome,
+        ip.quantidade,
+        ip.preco_unitario_centavos
+      FROM pedidos p
+      INNER JOIN itens_pedido ip
+        ON ip.pedido_id = p.id
+      INNER JOIN produtos pr
+        ON pr.id = ip.produto_id
+      WHERE p.cliente_id = $1
+      ORDER BY
+        p.criado_em DESC,
+        p.id DESC,
+        ip.id ASC
+    `,
+    [id],
+  );
+
+
+  // 3. Agrupa os itens por pedido
+  const pedidosMap = new Map();
+
+
+  for (const linha of linhas) {
+    if (!pedidosMap.has(linha.pedido_id)) {
+      pedidosMap.set(linha.pedido_id, {
+        id: linha.pedido_id,
+        status: linha.status,
+        criado_em: linha.criado_em,
+        total_centavos: 0,
+        itens: [],
+      });
+    }
+
+
+    const pedido = pedidosMap.get(linha.pedido_id);
+
+
+    pedido.itens.push({
+      produto_id: linha.produto_id,
+      produto_nome: linha.produto_nome,
+      quantidade: linha.quantidade,
+      preco_unitario_centavos: linha.preco_unitario_centavos,
+    });
+
+
+    pedido.total_centavos +=
+      linha.quantidade * linha.preco_unitario_centavos;
+  }
+  const resposta = Array.from(pedidosMap.values());
 
   res.json(resposta);
 }));
