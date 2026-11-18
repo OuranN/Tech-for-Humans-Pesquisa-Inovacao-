@@ -7,6 +7,35 @@ const STATUS_VALIDOS = ['pago', 'entregue', 'cancelado', 'pendente'];
 const TAMANHO_PAGINA = 20;
 const MAX_DIAS_RELATORIO = 31;
 
+const TTL_TOTAL_MS = 60000;
+const cacheTotal = new Map();
+
+
+function totalPorStatus(status) {
+  const entrada = cacheTotal.get(status);
+  if (entrada && entrada.valor !== undefined && entrada.expira > Date.now()) {
+    return Promise.resolve(entrada.valor);
+  }
+  if (entrada && entrada.promessa) return entrada.promessa;
+
+
+  const promessa = consultar('SELECT count(*) AS total FROM pedidos WHERE status = $1', [status])
+    .then(([linha]) => {
+      const valor = Number(linha.total);
+      cacheTotal.set(status, { valor, expira: Date.now() + TTL_TOTAL_MS });
+      return valor;
+    })
+    .catch((erro) => {
+      cacheTotal.delete(status);
+      throw erro;
+    });
+
+
+  cacheTotal.set(status, { ...(entrada || {}), promessa });
+  return promessa;
+}
+
+
 function inteiroPositivo(valor) {
   if (typeof valor !== 'string' || !/^\d+$/.test(valor)) return null;
   const numero = Number(valor);
@@ -123,9 +152,7 @@ rotas.get('/clientes/:id/pedidos', assincrono(async (req, res) => {
       });
     }
 
-
     const pedido = pedidosMap.get(linha.pedido_id);
-
 
     pedido.itens.push({
       produto_id: linha.produto_id,
@@ -152,16 +179,23 @@ rotas.get('/pedidos', assincrono(async (req, res) => {
   const pagina = req.query.pagina === undefined ? 1 : inteiroPositivo(req.query.pagina);
   if (pagina === null) return res.status(400).json({ erro: 'pagina invalida' });
 
-  const [contagem] = await consultar('SELECT count(*) AS total FROM pedidos WHERE status = $1', [status]);
-  const linhas = await consultar(
-    'SELECT * FROM pedidos WHERE status = $1 ORDER BY criado_em DESC, id DESC LIMIT $2 OFFSET $3',
+    const [total, linhas] = await Promise.all([
+  totalPorStatus(status),
+  consultar(
+    `SELECT id, cliente_id, status, criado_em
+       FROM pedidos
+      WHERE status = $1
+      ORDER BY criado_em DESC, id DESC
+      LIMIT $2 OFFSET $3`,
     [status, TAMANHO_PAGINA, (pagina - 1) * TAMANHO_PAGINA],
-  );
+  ),
+]);
+
 
   res.json({
     pagina,
     tamanho_pagina: TAMANHO_PAGINA,
-    total: Number(contagem.total),
+    total,
     pedidos: linhas.map((linha) => ({
       id: linha.id,
       cliente_id: linha.cliente_id,
